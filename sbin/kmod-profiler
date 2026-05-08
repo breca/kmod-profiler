@@ -159,6 +159,10 @@ cmd_generate() {
 
   local tmp_grace tmp_blacklist
   tmp_grace=$(mktemp); tmp_blacklist=$(mktemp)
+  # SC2064: deliberate early expansion — these are function-local vars that
+  # go out of scope before the EXIT trap fires, and `set -u` would fail on
+  # late expansion. mktemp paths are well-formed so word-splitting is safe.
+  # shellcheck disable=SC2064
   trap "rm -f $tmp_grace $tmp_blacklist" EXIT
 
   modules_in_grace > "$tmp_grace"

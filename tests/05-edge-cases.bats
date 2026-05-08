@@ -70,6 +70,30 @@ teardown() { destroy_sandbox; }
     [ "$(wc -l < "$obs")" -eq 1 ]
 }
 
+@test "regression: generate's EXIT trap survives function-local var scope" {
+    # Past bug: replacing the double-quoted trap with single quotes caused
+    # 'unbound variable' because tmp_grace/tmp_blacklist are function-local
+    # and go out of scope before the EXIT trap fires. The trap must use
+    # double-quotes for early expansion. Codified as a shellcheck disable
+    # comment in the source; this test guards against accidental regression.
+    grep -B1 'trap.*tmp_grace.*tmp_blacklist' "${BATS_TEST_DIRNAME}/../sbin/kmod-profiler" \
+        | grep -q 'shellcheck disable=SC2064' || {
+        echo "Trap line lost its shellcheck disable directive."
+        echo "If you're tempted to single-quote the trap to satisfy SC2064:"
+        echo "the variables are function-local; late expansion fails under set -u."
+        return 1
+    }
+
+    # And the actual functional check: generate must complete cleanly
+    mock_kernel "6.10.0-test" ext4 esp4
+    mock_loaded ext4
+    kmod sample
+    export KMOD_GRACE_SECONDS=0
+    run kmod generate
+    [ "$status" -eq 0 ]
+    [[ ! "$output" =~ "unbound variable" ]]
+}
+
 @test "grace timestamp is preserved across multiple kernel-changed calls" {
     mock_kernel "6.10.0-test" ext4
     mock_loaded ext4

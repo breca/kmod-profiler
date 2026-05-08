@@ -1,4 +1,6 @@
 # Maintainer: kmod-profiler maintainers <root@localhost>
+# shellcheck shell=bash
+# shellcheck disable=SC2034,SC2154  # Metadata vars read by abuild; srcdir/pkgdir provided by abuild
 pkgname=kmod-profiler
 pkgver=1.0.0
 pkgrel=0
@@ -28,17 +30,17 @@ options="!check"  # Tests use bats; enable with abuild -k if bats available
 builddir="$srcdir/$pkgname-$pkgver"
 
 build() {
-    cd "$builddir"
+    cd "$builddir" || return 1
     make check
 }
 
 check() {
-    cd "$builddir"
+    cd "$builddir" || return 1
     bats tests/
 }
 
 package() {
-    cd "$builddir"
+    cd "$builddir" || return 1
 
     # Standard Makefile install — no systemd units installed by default
     # because Alpine doesn't have systemd. Cron handles periodic sampling;

@@ -137,6 +137,24 @@ check:
 	bash -n sbin/kmod-profiler
 	sh -n kernel-hooks/postinst.d/60-kmod-profiler
 	sh -n kernel-hooks/install.d/40-kmod-profiler.install
+	@if command -v shellcheck >/dev/null 2>&1 ; then \
+		shellcheck \
+			sbin/kmod-profiler \
+			install.sh \
+			kernel-hooks/postinst.d/60-kmod-profiler \
+			kernel-hooks/install.d/40-kmod-profiler.install \
+			openrc/kmod-profiler.initd \
+			openrc/kmod-profiler.confd \
+			runit/run \
+			alpine/kmod-profiler.pre-install \
+			alpine/kmod-profiler.post-install \
+			alpine/kmod-profiler.pre-deinstall \
+			alpine/kmod-profiler.trigger \
+			alpine/APKBUILD || exit 1 ; \
+		echo "Shell scripts pass shellcheck." ; \
+	else \
+		echo "(shellcheck not installed; skipping deep lint)" ; \
+	fi
 	@if command -v mandoc >/dev/null 2>&1 ; then \
 		mandoc -T lint -W warning man/kmod-profiler.8 || exit 1 ; \
 		echo "Man page lints clean." ; \

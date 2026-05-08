@@ -1,3 +1,5 @@
+# shellcheck shell=sh
+# shellcheck disable=SC2034  # Variables sourced by /etc/init.d/kmod-profiler
 # /etc/conf.d/kmod-profiler
 # Configuration for the OpenRC kmod-profiler service.
 

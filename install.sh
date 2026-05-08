@@ -143,7 +143,6 @@ uninstall_common() {
 
 cmd_install() {
     require_root
-    local sched
     sched=$(detect_scheduler)
     echo "Installing kmod-profiler (scheduler: $sched) ..."
     install_common

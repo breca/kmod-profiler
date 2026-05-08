@@ -1,4 +1,6 @@
 #!/sbin/openrc-run
+# shellcheck shell=sh
+# shellcheck disable=SC2034  # Variables consumed by openrc-run framework
 # SPDX-License-Identifier: GPL-3.0-or-later
 # OpenRC service for kmod-profiler.
 # Install at /etc/init.d/kmod-profiler
