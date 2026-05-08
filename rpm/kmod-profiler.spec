@@ -3,7 +3,7 @@ Version:        1.0.0
 Release:        1%{?dist}
 Summary:        Kernel module allowlist via runtime observation
 License:        GPL-3.0-or-later
-URL:            https://example.invalid/kmod-profiler
+URL:            https://github.com/breca/kmod-profiler
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
 
