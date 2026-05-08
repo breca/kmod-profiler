@@ -26,7 +26,8 @@ jobs:
         # differences and confirm bats behaves the same everywhere.
         # Alpine validates the non-systemd / busybox-coreutils path.
         # Devuan validates the non-systemd / sysvinit path (no systemd at all).
-        container: ['debian:bookworm', 'ubuntu:24.04', 'fedora:latest', 'archlinux:latest', 'alpine:latest', 'devuan/devuan:daedalus']
+        # Void Linux (musl + glibc) validates xbps package manager + runit init.
+        container: ['debian:bookworm', 'ubuntu:24.04', 'fedora:latest', 'archlinux:latest', 'alpine:latest', 'devuan/devuan:daedalus', 'ghcr.io/void-linux/void-musl:latest', 'ghcr.io/void-linux/void-glibc:latest']
     container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +42,8 @@ jobs:
             pacman -Syu --noconfirm bats make findutils gawk coreutils mandoc diffutils
           elif command -v apk >/dev/null; then
             apk add --no-cache bats make findutils gawk coreutils mandoc bash grep diffutils
+          elif command -v xbps-install >/dev/null; then
+            xbps-install -Syu xbps xtools bats make findutils gawk coreutils mandoc diffutils bash
           fi
       - run: bats tests/
 
