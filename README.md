@@ -88,3 +88,7 @@ make rpm           # .rpm (needs rpmbuild)
 ## License
 
 GPL-3.0-or-later. See LICENSE.
+
+## AI Disclosure
+
+This project was developed with the assistance of AI tools (e.g. GitHub Copilot, ChatGPT) for code generation, documentation, and review. All output was reviewed and verified by the author.
