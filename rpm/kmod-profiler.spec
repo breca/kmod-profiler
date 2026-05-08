@@ -81,7 +81,7 @@ EOF
 fi
 
 %changelog
-* Thu May 07 2026 kmod-profiler maintainers <root@localhost> - 1.0.0-1
+* Thu May 07 2026 Brett C. <32656963+breca@users.noreply.github.com> - 1.0.0-1
 - Initial release.
 - Per-kernel observation and snapshot tracking with grace-period handling
 - systemd timer + path watcher for steady-state and drift detection
