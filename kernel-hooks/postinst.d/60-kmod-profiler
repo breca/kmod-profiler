@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# kmod-profiler kernel hook for Debian/Ubuntu.
+# Install at: /etc/kernel/postinst.d/60-kmod-profiler
+# Runs alphabetically before zz-update-initramfs, so the blacklist file is
+# refreshed before the initramfs is rebuilt.
+set -e
+KVER="$1"
+[ -n "$KVER" ] || exit 0
+[ -x /usr/local/sbin/kmod-profiler ] || exit 0
+/usr/local/sbin/kmod-profiler kernel-changed "$KVER" || true
+exit 0

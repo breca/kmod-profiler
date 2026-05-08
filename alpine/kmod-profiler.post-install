@@ -1,0 +1,28 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Alpine post-install: print quick-start guidance.
+set -e
+
+cat <<'EOF'
+
+==> kmod-profiler installed.
+==>
+==> Sampling cadence:
+==>   - cron (default): edits /etc/cron.d/kmod-profiler; ensure crond is running:
+==>       rc-service crond start && rc-update add crond
+==>   - OpenRC (alternative): use /etc/init.d/kmod-profiler instead of cron:
+==>       rc-service kmod-profiler start && rc-update add kmod-profiler
+==>
+==> Drift detection on /lib/modules is handled automatically via APK triggers.
+==>
+==> After 1-4 weeks of normal use:
+==>   sudo kmod-profiler status
+==>   sudo kmod-profiler generate
+==>   less /var/lib/kmod-profiler/generated-blacklist.conf
+==>   sudo kmod-profiler apply
+==>   # Then rebuild initramfs (Alpine: mkinitfs)
+==>
+==> See: man kmod-profiler  or  /usr/share/doc/kmod-profiler/
+
+EOF
+exit 0

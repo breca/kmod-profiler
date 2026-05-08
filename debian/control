@@ -1,0 +1,32 @@
+Source: kmod-profiler
+Section: admin
+Priority: optional
+Maintainer: kmod-profiler maintainers <root@localhost>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://example.invalid/kmod-profiler
+Rules-Requires-Root: no
+
+Package: kmod-profiler
+Architecture: all
+Depends: ${misc:Depends},
+         bash (>= 4),
+         coreutils,
+         findutils,
+         systemd
+Recommends: initramfs-tools | dracut
+Description: Kernel module allowlist via runtime observation
+ kmod-profiler observes which kernel modules your system actually loads
+ over time, then generates a modprobe blacklist for everything else.
+ .
+ It hooks into kernel package installation and watches /lib/modules for
+ changes so the blacklist stays coherent across kernel updates, DKMS
+ rebuilds, and out-of-tree driver drops. New modules introduced by a
+ kernel update get a configurable grace period (default 7 days) before
+ they can be blacklisted, so observation has a chance to catch them
+ before they're suppressed.
+ .
+ This reduces the kernel's autoload attack surface against local
+ privilege escalation bugs in subsystems the system never legitimately
+ uses (e.g., Dirty Frag's RxRPC vector). It is hardening, not an
+ integrity boundary; pair with module signing and lockdown for that.

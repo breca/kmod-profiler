@@ -1,0 +1,292 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# kmod-profiler — observe loaded kernel modules over time, generate a
+# modprobe blacklist for everything else, and stay sane across kernel updates.
+#
+# State layout:
+#   /var/lib/kmod-profiler/
+#     observed/<kver>           per-kernel observed module set (sorted, normalized)
+#     snapshots/<kver>          per-kernel available module set (sorted, normalized)
+#     all-observed              union across every kernel ever profiled
+#     grace                     "module<TAB>first-seen-epoch" lines
+#     generated-blacklist.conf  current generator output
+#     profile.log               human-readable log
+#
+# Subcommands:
+#   sample                       record currently loaded modules for the running kernel
+#   status                       show progress
+#   generate [kver]              produce blacklist for a kernel (default: running)
+#   apply [file]                 install the generated blacklist
+#   kernel-changed <kver>        package-hook entry; snapshots, marks grace, regenerates
+#   rescan                       discover and process every kernel in /lib/modules
+#   diff <kver1> <kver2>         show module-set differences between two snapshots
+
+set -euo pipefail
+
+STATE_DIR="${KMOD_PROFILER_STATE:-/var/lib/kmod-profiler}"
+OBSERVED_DIR="$STATE_DIR/observed"
+SNAPSHOT_DIR="$STATE_DIR/snapshots"
+ALL_OBSERVED="$STATE_DIR/all-observed"
+GRACE_FILE="$STATE_DIR/grace"
+LOG_FILE="$STATE_DIR/profile.log"
+OUT_FILE="$STATE_DIR/generated-blacklist.conf"
+
+# Overridable I/O paths (defaults match a normal Linux system; override for
+# testing, debugging, or analyzing module trees from other machines).
+PROC_MODULES="${KMOD_PROC_MODULES:-/proc/modules}"
+LIB_MODULES="${KMOD_LIB_MODULES:-/lib/modules}"
+LIVE_BLACKLIST="${KMOD_LIVE_BLACKLIST:-/etc/modprobe.d/zz-kmod-profiler.conf}"
+
+# Override for the running kernel detection (lets us "act as" a different
+# kernel for cross-machine analysis or testing).
+running_kernel() { echo "${KMOD_KERNEL_VERSION:-$(uname -r)}"; }
+
+# How long a newly-appeared module is exempt from being blacklisted, so that
+# a kernel update doesn't immediately disable hardware/feature modules that
+# observation simply hasn't seen yet. Default 7 days.
+GRACE_SECONDS="${KMOD_GRACE_SECONDS:-604800}"
+
+ensure_dirs() {
+  mkdir -p "$OBSERVED_DIR" "$SNAPSHOT_DIR"
+  touch "$ALL_OBSERVED" "$GRACE_FILE" "$LOG_FILE"
+}
+
+log() { printf '%s %s\n' "$(date -Iseconds)" "$*" >> "$LOG_FILE"; }
+
+# Kernel internally normalizes module names by replacing '-' with '_'.
+# Match that everywhere we compare strings.
+normalize() { tr '-' '_'; }
+
+list_modules_for() {
+  local kver="$1"
+  [[ -d "${LIB_MODULES}/$kver" ]] || return 1
+  find "${LIB_MODULES}/$kver" -type f \( -name '*.ko' -o -name '*.ko.*' \) -printf '%f\n' \
+    | sed -E 's/\.ko(\.(xz|zst|gz))?$//' \
+    | normalize \
+    | sort -u
+}
+
+# Idempotent unless force=1
+snapshot_kernel() {
+  local kver="$1" force="${2:-}"
+  local snap="$SNAPSHOT_DIR/$kver"
+  [[ -f "$snap" && -z "$force" ]] && return 0
+  if list_modules_for "$kver" > "$snap.tmp"; then
+    mv "$snap.tmp" "$snap"
+    log "snapshot $kver: $(wc -l < "$snap") modules"
+  else
+    rm -f "$snap.tmp"
+    log "snapshot failed for $kver (no $LIB_MODULES/$kver)"
+    return 1
+  fi
+}
+
+# Add modules in $1 (a snapshot file) that aren't in all-observed to the grace
+# file, preserving any pre-existing grace timestamps.
+record_grace() {
+  local snap="$1" now; now=$(date +%s)
+  comm -23 "$snap" <(sort -u "$ALL_OBSERVED") \
+    | while read -r mod; do
+        [[ -z "$mod" ]] && continue
+        grep -q "^${mod}	" "$GRACE_FILE" 2>/dev/null && continue
+        printf '%s\t%s\n' "$mod" "$now" >> "$GRACE_FILE"
+      done
+}
+
+modules_in_grace() {
+  local now cutoff
+  now=$(date +%s)
+  cutoff=$((now - GRACE_SECONDS))
+  awk -F'\t' -v c="$cutoff" '$2 > c {print $1}' "$GRACE_FILE" 2>/dev/null | sort -u
+}
+
+cmd_sample() {
+  ensure_dirs
+  local kver; kver=$(running_kernel)
+  snapshot_kernel "$kver" >/dev/null || true
+
+  # Update observations FIRST. We want anything currently loaded to land in
+  # all-observed before we evaluate grace candidacy — otherwise loaded modules
+  # appear "new to the system" on the first sample and get spuriously graced.
+  awk '{print $1}' "$PROC_MODULES" | normalize | sort -u > "$STATE_DIR/.now"
+  local obs="$OBSERVED_DIR/$kver"
+  if [[ -f "$obs" ]]; then
+    sort -u "$obs" "$STATE_DIR/.now" > "$obs.tmp" && mv "$obs.tmp" "$obs"
+  else
+    cp "$STATE_DIR/.now" "$obs"
+  fi
+  sort -u "$ALL_OBSERVED" "$STATE_DIR/.now" > "$ALL_OBSERVED.tmp"
+  mv "$ALL_OBSERVED.tmp" "$ALL_OBSERVED"
+  rm -f "$STATE_DIR/.now"
+
+  # Now record grace timestamps for modules in the snapshot that aren't in
+  # all-observed (i.e., genuinely never-observed modules in this kernel).
+  [[ -f "$SNAPSHOT_DIR/$kver" ]] && record_grace "$SNAPSHOT_DIR/$kver"
+
+  log "sample $kver: kernel-obs=$(wc -l < "$obs") total-obs=$(wc -l < "$ALL_OBSERVED")"
+}
+
+cmd_status() {
+  ensure_dirs
+  local kver; kver=$(running_kernel)
+  echo "Running kernel: $kver"
+  echo
+  echo "Available (this kernel):  $(list_modules_for "$kver" 2>/dev/null | wc -l)"
+  echo "Observed (this kernel):   $([ -f "$OBSERVED_DIR/$kver" ] && wc -l < "$OBSERVED_DIR/$kver" || echo 0)"
+  echo "Observed (all kernels):   $(wc -l < "$ALL_OBSERVED")"
+  echo "In grace window:          $(modules_in_grace | wc -l)  (window: $((GRACE_SECONDS / 86400)) days)"
+  echo
+  echo "Kernel snapshots on file:"
+  for f in "$SNAPSHOT_DIR"/*; do
+    [[ -f "$f" ]] || continue
+    printf '  %-30s %d modules\n' "$(basename "$f")" "$(wc -l < "$f")"
+  done
+  echo
+  echo "Recent log entries:"
+  tail -n 8 "$LOG_FILE" 2>/dev/null | sed 's/^/  /' || echo "  (none)"
+}
+
+cmd_generate() {
+  ensure_dirs
+  local kver="${1:-$(running_kernel)}"
+  local snap="$SNAPSHOT_DIR/$kver"
+  if [[ ! -f "$snap" ]]; then
+    snapshot_kernel "$kver" || {
+      echo "No /lib/modules/$kver and no snapshot on file." >&2
+      exit 1
+    }
+  fi
+
+  local tmp_grace tmp_blacklist
+  tmp_grace=$(mktemp); tmp_blacklist=$(mktemp)
+  trap "rm -f $tmp_grace $tmp_blacklist" EXIT
+
+  modules_in_grace > "$tmp_grace"
+  comm -23 "$snap" <(sort -u "$ALL_OBSERVED") | comm -23 - "$tmp_grace" > "$tmp_blacklist"
+
+  {
+    cat <<EOF
+# Generated by kmod-profiler on $(date -Iseconds)
+# Target kernel:      $kver
+# Available modules:  $(wc -l < "$snap")
+# Ever observed:      $(wc -l < "$ALL_OBSERVED")
+# In grace window:    $(wc -l < "$tmp_grace")
+# Blacklisted below:  $(wc -l < "$tmp_blacklist")
+#
+# Both 'blacklist' and 'install ... /bin/false' are emitted: the former blocks
+# canonical-name loads, the latter blocks alias-driven autoloads.
+# Modules that recently appeared in a kernel update are kept allowed for
+# $((GRACE_SECONDS / 86400)) days so observation can confirm whether they're needed before
+# they're suppressed.
+
+EOF
+    while read -r mod; do
+      [[ -z "$mod" ]] && continue
+      printf 'blacklist %s\ninstall %s /bin/false\n' "$mod" "$mod"
+    done < "$tmp_blacklist"
+  } > "$OUT_FILE"
+
+  log "generate $kver: blacklist=$(wc -l < "$tmp_blacklist") grace=$(wc -l < "$tmp_grace")"
+  echo "Wrote $OUT_FILE"
+  echo "  available:    $(wc -l < "$snap")"
+  echo "  observed:     $(wc -l < "$ALL_OBSERVED")"
+  echo "  in grace:     $(wc -l < "$tmp_grace")"
+  echo "  blacklisting: $(wc -l < "$tmp_blacklist")"
+}
+
+cmd_apply() {
+  local src="${1:-$OUT_FILE}"
+  [[ -f "$src" ]] || { echo "No generated file at $src." >&2; exit 1; }
+  [[ $EUID -eq 0 ]] || { echo "Must be root to apply." >&2; exit 1; }
+  cp "$src" "$LIVE_BLACKLIST"
+  log "applied blacklist to $LIVE_BLACKLIST"
+  echo "Installed: $LIVE_BLACKLIST"
+  echo "Rebuild initramfs (Debian: update-initramfs -u; Fedora/RHEL: dracut -f; Arch: mkinitcpio -P)."
+}
+
+# Hook entry point: a kernel package was installed/upgraded for $kver.
+# - Snapshot its module set (force, since the kernel may have been rebuilt in place).
+# - Mark new-to-the-system modules with the current grace timestamp.
+# - Regenerate the blacklist for that kernel.
+# - If a live blacklist is already deployed, refresh it so the upcoming
+#   initramfs build picks up the new state.
+cmd_kernel_changed() {
+  ensure_dirs
+  local kver="${1:-}"
+  [[ -n "$kver" ]] || { echo "Usage: $0 kernel-changed <kver>" >&2; exit 2; }
+  log "kernel-changed: $kver"
+
+  snapshot_kernel "$kver" force || {
+    log "kernel-changed: no $LIB_MODULES/$kver, skipping"
+    return 0
+  }
+  record_grace "$SNAPSHOT_DIR/$kver"
+  cmd_generate "$kver" >/dev/null
+
+  if [[ -f "$LIVE_BLACKLIST" ]]; then
+    cp "$OUT_FILE" "$LIVE_BLACKLIST"
+    log "refreshed $LIVE_BLACKLIST for $kver"
+  fi
+}
+
+# Discover any kernel directories we don't yet have snapshots for and process them.
+# Used by the systemd path unit to catch DKMS / out-of-tree drops.
+cmd_rescan() {
+  ensure_dirs
+  for dir in "$LIB_MODULES"/*/; do
+    [[ -d "$dir" ]] || continue
+    local kver; kver=$(basename "$dir")
+    if [[ ! -f "$SNAPSHOT_DIR/$kver" ]]; then
+      log "rescan: new kernel directory $kver"
+      cmd_kernel_changed "$kver"
+    else
+      # Existing snapshot — check whether the on-disk module set has drifted
+      # (DKMS rebuilt, vendor driver dropped in place, etc.)
+      local current; current=$(mktemp)
+      list_modules_for "$kver" > "$current" || { rm -f "$current"; continue; }
+      if ! cmp -s "$current" "$SNAPSHOT_DIR/$kver"; then
+        log "rescan: drift detected in $kver"
+        rm -f "$current"
+        cmd_kernel_changed "$kver"
+      else
+        rm -f "$current"
+      fi
+    fi
+  done
+}
+
+cmd_diff() {
+  local k1="$1" k2="$2"
+  local s1="$SNAPSHOT_DIR/$k1" s2="$SNAPSHOT_DIR/$k2"
+  [[ -f "$s1" ]] || { echo "No snapshot for $k1" >&2; exit 1; }
+  [[ -f "$s2" ]] || { echo "No snapshot for $k2" >&2; exit 1; }
+  echo "=== Modules in $k2 but not in $k1 (new since $k1) ==="
+  comm -13 "$s1" "$s2"
+  echo
+  echo "=== Modules in $k1 but not in $k2 (gone since $k1) ==="
+  comm -23 "$s1" "$s2"
+}
+
+case "${1:-}" in
+  sample)         cmd_sample ;;
+  status)         cmd_status ;;
+  generate)       shift; cmd_generate "$@" ;;
+  apply)          shift; cmd_apply "$@" ;;
+  kernel-changed) shift; cmd_kernel_changed "$@" ;;
+  rescan)         cmd_rescan ;;
+  diff)           shift; cmd_diff "$@" ;;
+  *)
+    cat <<EOF
+kmod-profiler — kernel module allowlist via observation, resilient to kernel updates.
+
+Usage:
+  $0 sample                    Record currently loaded modules
+  $0 status                    Show profiling progress
+  $0 generate [kver]           Generate blacklist for kernel (default: running)
+  $0 apply [file]              Install the generated blacklist
+  $0 kernel-changed <kver>     Hook entry: snapshot+grace+regen for a kernel
+  $0 rescan                    Find new/changed kernel dirs in /lib/modules
+  $0 diff <kver1> <kver2>      Show module differences between two snapshots
+EOF
+    exit 1 ;;
+esac

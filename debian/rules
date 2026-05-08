@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export PREFIX = /usr
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/kmod-profiler PREFIX=/usr UNITDIR=/lib/systemd/system
+
+override_dh_installsystemd:
+	dh_installsystemd --name=kmod-profiler kmod-profiler.timer
+	dh_installsystemd --name=kmod-profiler-rescan kmod-profiler-rescan.path
+	# Don't auto-start the .service files directly; they're triggered by .timer/.path

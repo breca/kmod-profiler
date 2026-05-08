@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch /lib/modules for changes (DKMS, vendor drivers, manual installs)
+Documentation=man:kmod-profiler
+
+[Path]
+PathChanged=/lib/modules
+PathModified=/lib/modules
+
+[Install]
+WantedBy=multi-user.target

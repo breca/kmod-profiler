@@ -1,0 +1,37 @@
+post_install() {
+    systemctl daemon-reload
+    systemctl enable --now kmod-profiler.timer kmod-profiler-rescan.path
+    cat <<EOF
+
+==> kmod-profiler installed. Profiling has begun.
+==> Let it run for at least 1–4 weeks of normal use, then:
+==>     sudo kmod-profiler status
+==>     sudo kmod-profiler generate
+==>     less /var/lib/kmod-profiler/generated-blacklist.conf
+==>     sudo kmod-profiler apply
+==>     sudo mkinitcpio -P
+==>     sudo reboot
+==>
+==> Documentation: /usr/share/doc/kmod-profiler/kmod-profiler.md
+EOF
+}
+
+post_upgrade() {
+    systemctl daemon-reload
+    systemctl try-restart kmod-profiler.timer kmod-profiler-rescan.path 2>/dev/null || true
+}
+
+pre_remove() {
+    systemctl disable --now kmod-profiler.timer kmod-profiler-rescan.path 2>/dev/null || true
+}
+
+post_remove() {
+    systemctl daemon-reload
+    cat <<EOF
+
+==> kmod-profiler removed. Not removed:
+==>     /var/lib/kmod-profiler/                  (state directory)
+==>     /etc/modprobe.d/zz-kmod-profiler.conf    (active blacklist, if any)
+==> Remove manually for complete cleanup, then rebuild initramfs.
+EOF
+}

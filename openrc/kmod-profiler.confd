@@ -1,0 +1,17 @@
+# /etc/conf.d/kmod-profiler
+# Configuration for the OpenRC kmod-profiler service.
+
+# Path to the kmod-profiler binary.
+KMOD_PROFILER_BIN="/usr/sbin/kmod-profiler"
+
+# Sample interval in seconds (default: 60 = 1 minute, matches systemd timer).
+KMOD_PROFILER_INTERVAL=60
+
+# Run rescan every Nth sample (default: 5 = every 5 minutes).
+KMOD_PROFILER_RESCAN_INTERVAL=5
+
+# Override grace period if desired; passed through to kmod-profiler.
+# KMOD_GRACE_SECONDS=2592000   # 30 days
+
+# Override state directory if desired.
+# KMOD_PROFILER_STATE=/var/lib/kmod-profiler

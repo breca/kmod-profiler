@@ -1,0 +1,17 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# runit service for kmod-profiler. Install at /etc/sv/kmod-profiler/run
+# Then activate with: ln -s /etc/sv/kmod-profiler /var/service/
+
+exec 2>&1
+exec sh -c '
+    i=0
+    while true; do
+        kmod-profiler sample 2>/dev/null || true
+        i=$((i + 1))
+        if [ $((i % 5)) -eq 0 ]; then
+            kmod-profiler rescan 2>/dev/null || true
+        fi
+        sleep 60
+    done
+'

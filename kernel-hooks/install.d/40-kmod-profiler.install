@@ -1,0 +1,18 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# kmod-profiler kernel-install hook for systemd-based distros (Fedora, RHEL,
+# CentOS Stream, Arch with kernel-install, openSUSE MicroOS, etc.)
+# Install at: /etc/kernel/install.d/40-kmod-profiler.install
+# Runs before 50-dracut.install / 50-mkinitcpio.install, so the blacklist
+# file is refreshed before the initramfs is rebuilt.
+set -e
+COMMAND="$1"
+KVER="$2"
+[ -n "$KVER" ] || exit 0
+[ -x /usr/local/sbin/kmod-profiler ] || exit 0
+case "$COMMAND" in
+  add) /usr/local/sbin/kmod-profiler kernel-changed "$KVER" || true ;;
+  # 'remove' intentionally not handled: we keep historical snapshots and
+  # observation data for kernels that have been uninstalled.
+esac
+exit 0

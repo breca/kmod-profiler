@@ -1,0 +1,145 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: make check
+      - run: shellcheck sbin/kmod-profiler install.sh
+                       kernel-hooks/postinst.d/60-kmod-profiler
+                       kernel-hooks/install.d/40-kmod-profiler.install
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Run the test suite on multiple distros to catch coreutils / awk
+        # differences and confirm bats behaves the same everywhere.
+        # Alpine validates the non-systemd / busybox-coreutils path.
+        container: ['debian:bookworm', 'ubuntu:24.04', 'fedora:latest', 'archlinux:latest', 'alpine:latest']
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bats and dependencies
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update
+            apt-get install -y bats make findutils gawk coreutils mandoc
+          elif command -v dnf >/dev/null; then
+            dnf install -y bats make findutils gawk coreutils mandoc
+          elif command -v pacman >/dev/null; then
+            pacman -Syu --noconfirm bats make findutils gawk coreutils mandoc
+          elif command -v apk >/dev/null; then
+            apk add --no-cache bats make findutils gawk coreutils mandoc bash grep
+          fi
+      - run: bats tests/
+
+  build-deb:
+    needs: test
+    runs-on: ubuntu-latest
+    container: debian:bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update
+          apt-get install -y build-essential debhelper devscripts
+      - run: dpkg-buildpackage -us -uc -b
+        working-directory: ${{ github.workspace }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: ../*.deb
+
+  build-rpm:
+    needs: test
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          dnf install -y rpm-build make systemd-rpm-macros tar
+      - name: Build RPM
+        run: |
+          mkdir -p ~/rpmbuild/SOURCES
+          tar --transform 's,^,kmod-profiler-1.0.0/,' \
+              --exclude=.git --exclude='*.tar.gz' \
+              -czf ~/rpmbuild/SOURCES/kmod-profiler-1.0.0.tar.gz .
+          rpmbuild -bb rpm/kmod-profiler.spec
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: ~/rpmbuild/RPMS/noarch/*.rpm
+
+  build-arch:
+    needs: test
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pacman -Syu --noconfirm base-devel sudo
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+      - name: Build package
+        run: |
+          tar --transform 's,^,kmod-profiler-1.0.0/,' \
+              --exclude=.git --exclude='*.tar.gz' \
+              -czf arch/kmod-profiler-1.0.0.tar.gz .
+          chown -R builder:builder arch
+          sudo -u builder bash -c 'cd arch && makepkg -f'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: arch/*.pkg.tar.zst
+
+  build-alpine:
+    needs: test
+    runs-on: ubuntu-latest
+    container: alpine:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apk add --no-cache alpine-sdk sudo
+          adduser -D builder
+          addgroup builder abuild
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          mkdir -p /var/cache/distfiles
+          chmod 1777 /var/cache/distfiles
+      - name: Build APK
+        run: |
+          tar --transform 's,^,kmod-profiler-1.0.0/,' \
+              --exclude=.git --exclude='*.tar.gz' \
+              -czf alpine/kmod-profiler-1.0.0.tar.gz .
+          chown -R builder:builder alpine
+          sudo -u builder sh -c '
+              cd alpine
+              abuild-keygen -an
+              abuild -F -K -P "$HOME/packages"
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpine
+          path: /home/builder/packages/**/*.apk
+
+  release:
+    needs: [build-deb, build-rpm, build-arch, build-alpine]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            deb/*.deb
+            rpm/*.rpm
+            arch/*.pkg.tar.zst
+            alpine/**/*.apk

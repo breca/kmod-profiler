@@ -1,0 +1,29 @@
+#!/sbin/openrc-run
+# SPDX-License-Identifier: GPL-3.0-or-later
+# OpenRC service for kmod-profiler.
+# Install at /etc/init.d/kmod-profiler
+
+name="kmod-profiler"
+description="Kernel module observation for kmod-profiler"
+
+# Loop driver — keeps a single long-running supervisor instead of relying
+# on cron. Useful on systems where cron isn't installed by default.
+command="/usr/bin/env"
+command_args="sh -c '
+    while true; do
+        ${KMOD_PROFILER_BIN:-/usr/sbin/kmod-profiler} sample 2>/dev/null || true
+        # rescan every Nth iteration to mimic the path-watcher cheaply
+        i=$((${i:-0} + 1))
+        if [ $((i % ${KMOD_PROFILER_RESCAN_INTERVAL:-5})) -eq 0 ]; then
+            ${KMOD_PROFILER_BIN:-/usr/sbin/kmod-profiler} rescan 2>/dev/null || true
+        fi
+        sleep ${KMOD_PROFILER_INTERVAL:-60}
+    done
+'"
+command_background=true
+pidfile="/run/kmod-profiler.pid"
+
+depend() {
+    need localmount
+    after bootmisc
+}

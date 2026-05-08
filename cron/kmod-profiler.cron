@@ -1,0 +1,15 @@
+# /etc/cron.d/kmod-profiler
+# Universal non-systemd schedule for kmod-profiler.
+# Installs as a system crontab; runs as root.
+#
+# - sample: matches systemd timer cadence (1 minute)
+# - rescan: substitutes for the path watcher; 5 minutes is a reasonable
+#   tradeoff vs. real-time inotify because rescan is cheap and idempotent.
+#
+# Safe to install alongside the systemd units; whichever mechanism your
+# init system uses will be the active driver.
+
+PATH=/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin
+
+* * * * *    root /usr/sbin/kmod-profiler sample 2>/dev/null
+*/5 * * * *  root /usr/sbin/kmod-profiler rescan 2>/dev/null

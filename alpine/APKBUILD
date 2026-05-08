@@ -1,0 +1,69 @@
+# Maintainer: kmod-profiler maintainers <root@localhost>
+pkgname=kmod-profiler
+pkgver=1.0.0
+pkgrel=0
+pkgdesc="Kernel module allowlist via runtime observation"
+url="https://example.invalid/kmod-profiler"
+arch="noarch"
+license="GPL-3.0-or-later"
+depends="busybox findutils gawk"
+makedepends="bats mandoc"
+checkdepends="bats mandoc"
+install="$pkgname.pre-install $pkgname.post-install $pkgname.pre-deinstall"
+
+# Triggers are Alpine's native equivalent of systemd's path watcher: any
+# package install/upgrade/removal that adds, modifies, or removes files
+# under /lib/modules causes the trigger script to fire after the
+# transaction completes.
+triggers="$pkgname.trigger=/lib/modules/*"
+
+source="$pkgname-$pkgver.tar.gz
+        $pkgname.pre-install
+        $pkgname.post-install
+        $pkgname.pre-deinstall
+        $pkgname.trigger
+"
+options="!check"  # Tests use bats; enable with abuild -k if bats available
+
+builddir="$srcdir/$pkgname-$pkgver"
+
+build() {
+    cd "$builddir"
+    make check
+}
+
+check() {
+    cd "$builddir"
+    bats tests/
+}
+
+package() {
+    cd "$builddir"
+
+    # Standard Makefile install — no systemd units installed by default
+    # because Alpine doesn't have systemd. Cron handles periodic sampling;
+    # the apk trigger handles drift detection.
+    make install-bin install-hooks install-docs install-man \
+        DESTDIR="$pkgdir" \
+        PREFIX=/usr \
+        SYSCONFDIR=/etc \
+        MANDIR=/usr/share/man
+
+    # Cron drop-in (busybox-cron and dcron both honor /etc/cron.d/)
+    install -Dm644 cron/$pkgname.cron \
+        "$pkgdir/etc/cron.d/$pkgname"
+
+    # OpenRC service for users who prefer it over cron
+    install -Dm755 openrc/$pkgname.initd \
+        "$pkgdir/etc/init.d/$pkgname"
+    install -Dm644 openrc/$pkgname.confd \
+        "$pkgdir/etc/conf.d/$pkgname"
+}
+
+sha512sums="
+SKIP  $pkgname-$pkgver.tar.gz
+SKIP  $pkgname.pre-install
+SKIP  $pkgname.post-install
+SKIP  $pkgname.pre-deinstall
+SKIP  $pkgname.trigger
+"

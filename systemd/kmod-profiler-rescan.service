@@ -1,0 +1,9 @@
+[Unit]
+Description=kmod-profiler module-tree rescan
+Documentation=man:kmod-profiler
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kmod-profiler rescan
+Nice=19
+IOSchedulingClass=idle

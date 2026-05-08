@@ -1,0 +1,28 @@
+# Maintainer: kmod-profiler maintainers <root@localhost>
+
+pkgname=kmod-profiler
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Kernel module allowlist via runtime observation"
+arch=('any')
+url="https://example.invalid/kmod-profiler"
+license=('GPL3')
+depends=('bash' 'coreutils' 'findutils' 'systemd')
+optdepends=('mkinitcpio: rebuild initramfs after applying blacklist'
+            'dracut: alternative initramfs generator')
+backup=('etc/kernel/postinst.d/60-kmod-profiler'
+        'etc/kernel/install.d/40-kmod-profiler.install')
+install="${pkgname}.install"
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    make check
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    make install DESTDIR="${pkgdir}" PREFIX=/usr UNITDIR=/usr/lib/systemd/system
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

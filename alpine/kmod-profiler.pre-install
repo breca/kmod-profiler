@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Alpine pre-install: ensure required directories exist.
+set -e
+mkdir -p /var/lib/kmod-profiler
+exit 0

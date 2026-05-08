@@ -1,0 +1,13 @@
+[Unit]
+Description=Sample loaded kernel modules every minute
+Documentation=man:kmod-profiler
+
+[Timer]
+# Sample at boot (catches early-boot modules) and every minute thereafter.
+OnBootSec=10s
+OnUnitActiveSec=1min
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

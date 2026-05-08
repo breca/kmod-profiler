@@ -1,0 +1,13 @@
+kmod-profiler (1.0.0-1) unstable; urgency=medium
+
+  * Initial release.
+    - Per-kernel observation and snapshot tracking
+    - Grace-period handling for modules new to a kernel update
+    - systemd timer for periodic sampling
+    - Path watcher for DKMS / out-of-tree driver changes
+    - Kernel package hooks for Debian (postinst.d) and systemd
+      kernel-install (install.d)
+    - Mitigates Dirty Frag (esp4/esp6/rxrpc) on systems that don't
+      legitimately use IPsec or AFS.
+
+ -- kmod-profiler maintainers <root@localhost>  Thu, 07 May 2026 00:00:00 +0000
