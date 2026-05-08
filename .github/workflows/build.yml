@@ -25,7 +25,8 @@ jobs:
         # Run the test suite on multiple distros to catch coreutils / awk
         # differences and confirm bats behaves the same everywhere.
         # Alpine validates the non-systemd / busybox-coreutils path.
-        container: ['debian:bookworm', 'ubuntu:24.04', 'fedora:latest', 'archlinux:latest', 'alpine:latest']
+        # Devuan validates the non-systemd / sysvinit path (no systemd at all).
+        container: ['debian:bookworm', 'ubuntu:24.04', 'fedora:latest', 'archlinux:latest', 'alpine:latest', 'devuan/devuan:daedalus']
     container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
