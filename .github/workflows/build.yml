@@ -21,6 +21,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         # Run the test suite on multiple distros to catch coreutils / awk
         # differences and confirm bats behaves the same everywhere.
