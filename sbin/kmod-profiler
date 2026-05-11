@@ -23,6 +23,9 @@
 
 set -euo pipefail
 
+NAME="kmod-profiler"
+VERSION="1.0.0"
+
 STATE_DIR="${KMOD_PROFILER_STATE:-/var/lib/kmod-profiler}"
 OBSERVED_DIR="$STATE_DIR/observed"
 SNAPSHOT_DIR="$STATE_DIR/snapshots"
@@ -272,6 +275,7 @@ cmd_diff() {
 }
 
 case "${1:-}" in
+  --version|-v)   echo "$NAME $VERSION"; exit 0 ;;
   sample)         cmd_sample ;;
   status)         cmd_status ;;
   generate)       shift; cmd_generate "$@" ;;
