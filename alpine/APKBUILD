@@ -19,12 +19,7 @@ install="$pkgname.pre-install $pkgname.post-install $pkgname.pre-deinstall"
 # transaction completes.
 triggers="$pkgname.trigger=/lib/modules/*"
 
-source="$pkgname-$pkgver.tar.gz
-        $pkgname.pre-install
-        $pkgname.post-install
-        $pkgname.pre-deinstall
-        $pkgname.trigger
-"
+source="$pkgname-$pkgver.tar.gz"
 options="!check"  # Tests use bats; enable with abuild -k if bats available
 
 builddir="$srcdir/$pkgname-$pkgver"
@@ -62,10 +57,4 @@ package() {
         "$pkgdir/etc/conf.d/$pkgname"
 }
 
-sha512sums="
-SKIP  $pkgname-$pkgver.tar.gz
-SKIP  $pkgname.pre-install
-SKIP  $pkgname.post-install
-SKIP  $pkgname.pre-deinstall
-SKIP  $pkgname.trigger
-"
+sha512sums="SKIP  $pkgname-$pkgver.tar.gz"
