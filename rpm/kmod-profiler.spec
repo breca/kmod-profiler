@@ -44,8 +44,8 @@ make check
 make install DESTDIR=%{buildroot} PREFIX=/usr SBINDIR=%{_bindir} UNITDIR=%{_unitdir}
 
 %files
-%license LICENSE
-%doc README.md docs/kmod-profiler.md
+%license /usr/share/doc/kmod-profiler/LICENSE
+%doc /usr/share/doc/kmod-profiler/README.md /usr/share/doc/kmod-profiler/docs/kmod-profiler.md
 %{_bindir}/kmod-profiler
 %{_unitdir}/kmod-profiler.service
 %{_unitdir}/kmod-profiler.timer
