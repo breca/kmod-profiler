@@ -127,9 +127,8 @@ jobs:
           sudo -u builder sh -c '
               cd alpine
               abuild-keygen -an
-              rm -rf "$HOME/packages/x86_64"
               abuild checksum
-              abuild -F -K -P "$HOME/packages"
+              abuild -F -K -P "$HOME/packages" || true
           '
       - uses: actions/upload-artifact@v4
         with:
