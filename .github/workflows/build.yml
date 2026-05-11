@@ -110,7 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          apk add --no-cache alpine-sdk sudo
+          apk add --no-cache alpine-sdk findutils gawk bats mandoc sudo
           adduser -D builder
           addgroup builder abuild
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
