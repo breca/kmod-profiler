@@ -1,11 +1,17 @@
 # kmod-profiler — Makefile
 #
-# Default install layout follows the FHS:
-#   /usr/local/sbin/kmod-profiler                  (or /usr/sbin under DESTDIR=/usr)
-#   /lib/systemd/system/*.{service,timer,path}
+# Default install layout follows the FHS (PREFIX=/usr/local):
+#   /usr/local/sbin/kmod-profiler                  (use PREFIX=/usr for /usr/sbin)
+#   /lib/systemd/system/kmod-profiler.{service,timer}
+#   /lib/systemd/system/kmod-profiler-rescan.{service,path}
 #   /etc/kernel/postinst.d/60-kmod-profiler
 #   /etc/kernel/install.d/40-kmod-profiler.install
-#   /usr/share/doc/kmod-profiler/kmod-profiler.md
+#   /etc/cron.d/kmod-profiler
+#   /etc/init.d/kmod-profiler + /etc/conf.d/kmod-profiler (OpenRC)
+#   /etc/sv/kmod-profiler/run (runit)
+#   /etc/apk/triggers/kmod-profiler.trigger (Alpine)
+#   /usr/share/doc/kmod-profiler/{kmod-profiler.md,README.md,LICENSE}
+#   /usr/share/man/man8/kmod-profiler.8
 #
 # Variables:
 #   DESTDIR     staging root for packagers (default: empty)
