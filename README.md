@@ -105,16 +105,16 @@ kmod-profiler --version         Print version
 # After at least 1–4 weeks of normal use:
 sudo kmod-profiler status            # check progress
 sudo kmod-profiler generate          # produce candidate blacklist
-less /var/lib/kmod-profiler/generated-blacklist.conf   # review!
+less /var/lib/kmod-profiler/generated-blacklist.conf   # review this!
 sudo kmod-profiler apply             # install it
-sudo update-initramfs -u             # (or dracut -f, or mkinitcpio -P)
+sudo update-initramfs -u             # (or dracut -f, or mkinitcpio -P...)
 sudo reboot
 ```
 
 ### Example: `status` output
 
 ```text
-Running kernel: 6.18.28-2-cachyos-lts
+Running kernel: 6.18.28-2-lts
 
 Available (this kernel):  6417
 Observed (this kernel):   156
@@ -122,12 +122,12 @@ Observed (all kernels):   156
 In grace window:          6261  (window: 7 days)
 
 Kernel snapshots on file:
-  6.18.28-2-cachyos-lts          6417 modules
+  6.18.28-2-lts          6417 modules
 
 Recent log entries:
-  2026-05-11T22:15:30+10:00 snapshot 6.18.28-2-cachyos-lts: 6417 modules
-  2026-05-11T22:15:36+10:00 sample 6.18.28-2-cachyos-lts: kernel-obs=156 total-obs=156
-  2026-05-11T22:16:38+10:00 sample 6.18.28-2-cachyos-lts: kernel-obs=156 total-obs=156
+  2026-05-11T22:15:30+10:00 snapshot 6.18.28-2-lts: 6417 modules
+  2026-05-11T22:15:36+10:00 sample 6.18.28-2-lts: kernel-obs=156 total-obs=156
+  2026-05-11T22:16:38+10:00 sample 6.18.28-2-lts: kernel-obs=156 total-obs=156
 ```
 
 ### Example: `--help` output
@@ -147,7 +147,7 @@ Usage:
 
 ## Grace system and kernel updates
 
-When a kernel update introduces new modules, kmod-profiler doesn't immediately blacklist them — that would break hardware that only appears after the update. Instead it uses a **grace period**:
+When a kernel update introduces new modules, kmod-profiler doesn't immediately blacklist them - that would break hardware that only appears after the update. Instead it uses a **grace period**:
 
 1. **On kernel install** (via `/etc/kernel/postinst.d` hook): kmod-profiler snapshots the new kernel's module set and marks modules that aren't in `all-observed` as "graced" with the current timestamp.
 
