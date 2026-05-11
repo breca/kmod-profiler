@@ -23,6 +23,13 @@ build() {
 
 package() {
     cd "${pkgname}-${pkgver}"
-    make install DESTDIR="${pkgdir}" PREFIX=/usr UNITDIR=/usr/lib/systemd/system
+    # Arch has merged /usr: /usr/sbin is a symlink to /usr/bin owned by the
+    # 'filesystem' package. Installing to /usr/sbin would cause a directory-
+    # vs-symlink conflict. Send admin tools to /usr/bin instead.
+    make install \
+        DESTDIR="${pkgdir}" \
+        PREFIX=/usr \
+        SBINDIR=/usr/bin \
+        UNITDIR=/usr/lib/systemd/system
     install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
