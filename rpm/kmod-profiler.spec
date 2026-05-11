@@ -41,12 +41,12 @@ integrity boundary; pair with module signing and lockdown for that.
 make check
 
 %install
-make install DESTDIR=%{buildroot} PREFIX=/usr UNITDIR=%{_unitdir}
+make install DESTDIR=%{buildroot} PREFIX=/usr SBINDIR=%{_bindir} UNITDIR=%{_unitdir}
 
 %files
 %license LICENSE
 %doc README.md docs/kmod-profiler.md
-%{_sbindir}/kmod-profiler
+%{_bindir}/kmod-profiler
 %{_unitdir}/kmod-profiler.service
 %{_unitdir}/kmod-profiler.timer
 %{_unitdir}/kmod-profiler-rescan.service

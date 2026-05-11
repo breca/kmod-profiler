@@ -13,11 +13,11 @@ description="Kernel module observation for kmod-profiler"
 command="/usr/bin/env"
 command_args="sh -c '
     while true; do
-        ${KMOD_PROFILER_BIN:-/usr/sbin/kmod-profiler} sample 2>/dev/null || true
+        ${KMOD_PROFILER_BIN:-@SBINDIR@/kmod-profiler} sample 2>/dev/null || true
         # rescan every Nth iteration to mimic the path-watcher cheaply
         i=$((${i:-0} + 1))
         if [ $((i % ${KMOD_PROFILER_RESCAN_INTERVAL:-5})) -eq 0 ]; then
-            ${KMOD_PROFILER_BIN:-/usr/sbin/kmod-profiler} rescan 2>/dev/null || true
+            ${KMOD_PROFILER_BIN:-@SBINDIR@/kmod-profiler} rescan 2>/dev/null || true
         fi
         sleep ${KMOD_PROFILER_INTERVAL:-60}
     done

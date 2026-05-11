@@ -9,9 +9,9 @@ set -e
 COMMAND="$1"
 KVER="$2"
 [ -n "$KVER" ] || exit 0
-[ -x /usr/local/sbin/kmod-profiler ] || exit 0
+[ -x @SBINDIR@/kmod-profiler ] || exit 0
 case "$COMMAND" in
-  add) /usr/local/sbin/kmod-profiler kernel-changed "$KVER" || true ;;
+  add) @SBINDIR@/kmod-profiler kernel-changed "$KVER" || true ;;
   # 'remove' intentionally not handled: we keep historical snapshots and
   # observation data for kernels that have been uninstalled.
 esac

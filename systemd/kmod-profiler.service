@@ -4,6 +4,6 @@ Documentation=man:kmod-profiler
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/kmod-profiler sample
+ExecStart=@SBINDIR@/kmod-profiler sample
 Nice=19
 IOSchedulingClass=idle

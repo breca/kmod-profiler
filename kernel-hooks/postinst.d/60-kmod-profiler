@@ -7,6 +7,6 @@
 set -e
 KVER="$1"
 [ -n "$KVER" ] || exit 0
-[ -x /usr/local/sbin/kmod-profiler ] || exit 0
-/usr/local/sbin/kmod-profiler kernel-changed "$KVER" || true
+[ -x @SBINDIR@/kmod-profiler ] || exit 0
+@SBINDIR@/kmod-profiler kernel-changed "$KVER" || true
 exit 0

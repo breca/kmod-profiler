@@ -248,7 +248,7 @@ cmd_rescan() {
       # (DKMS rebuilt, vendor driver dropped in place, etc.)
       local current; current=$(mktemp)
       list_modules_for "$kver" > "$current" || { rm -f "$current"; continue; }
-      if ! diff -q "$current" "$SNAPSHOT_DIR/$kver" >/dev/null 2>&1; then
+      if ! cmp -s "$current" "$SNAPSHOT_DIR/$kver"; then
         log "rescan: drift detected in $kver"
         rm -f "$current"
         cmd_kernel_changed "$kver"

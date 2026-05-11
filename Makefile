@@ -14,17 +14,29 @@
 #   SYSCONFDIR  config directory             (default: /etc)
 #   UNITDIR     systemd unit directory       (default: /lib/systemd/system)
 #   DOCDIR      documentation directory      (default: $(PREFIX)/share/doc/kmod-profiler)
+#   MANDIR      man page directory           (default: $(PREFIX)/share/man)
 #
 # Targets:
-#   install         install everything
-#   install-bin     install just the script
-#   install-units   install just the systemd units
-#   install-hooks   install just the kernel hooks
-#   install-docs    install documentation
-#   uninstall       remove everything
-#   tarball         produce a release tarball
-#   deb             build a .deb (requires debhelper)
-#   rpm             build an .rpm (requires rpmbuild)
+#   install               install everything
+#   install-bin           install just the script
+#   install-units         install just the systemd units
+#   install-hooks         install just the kernel hooks
+#   install-docs          install documentation
+#   install-man           install man page
+#   install-cron          install cron drop-in
+#   install-openrc        install OpenRC service files
+#   install-runit         install runit service
+#   install-alpine        install Alpine trigger
+#   install-no-systemd    install everything except systemd units
+#   uninstall             remove everything
+#   check                 syntax-check shell scripts and lint man page
+#   test                  run the bats test suite
+#   tarball               produce a release tarball
+#   deb                   build a .deb (requires debhelper)
+#   rpm                   build an .rpm (requires rpmbuild)
+#   arch                  build an Arch PKGBUILD package
+#   packages              build deb + rpm + arch
+#   clean                 remove build artifacts
 
 NAME       := kmod-profiler
 VERSION    := 1.0.0
@@ -39,7 +51,7 @@ MANDIR     ?= $(PREFIX)/share/man
 INSTALL    := install
 
 .PHONY: all install install-bin install-units install-hooks install-docs \
-        install-man install-cron install-openrc install-runit \
+        install-man install-cron install-openrc install-runit install-alpine \
         install-no-systemd uninstall check test tarball deb rpm arch \
         packages clean
 
@@ -61,20 +73,27 @@ install-bin:
 	$(INSTALL) -d $(DESTDIR)$(SBINDIR)
 	$(INSTALL) -m 0755 sbin/kmod-profiler $(DESTDIR)$(SBINDIR)/kmod-profiler
 
+# Helper: copy a file substituting @SBINDIR@ with the actual install path.
+# Usage: $(call install_substituted,SOURCE,DEST,MODE)
+define install_substituted
+	$(INSTALL) -d $(dir $(2))
+	sed 's|@SBINDIR@|$(SBINDIR)|g' $(1) > $(2).tmp
+	$(INSTALL) -m $(3) $(2).tmp $(2)
+	rm -f $(2).tmp
+endef
+
 install-units:
 	$(INSTALL) -d $(DESTDIR)$(UNITDIR)
-	$(INSTALL) -m 0644 systemd/kmod-profiler.service        $(DESTDIR)$(UNITDIR)/
-	$(INSTALL) -m 0644 systemd/kmod-profiler.timer          $(DESTDIR)$(UNITDIR)/
-	$(INSTALL) -m 0644 systemd/kmod-profiler-rescan.service $(DESTDIR)$(UNITDIR)/
-	$(INSTALL) -m 0644 systemd/kmod-profiler-rescan.path    $(DESTDIR)$(UNITDIR)/
+	$(call install_substituted,systemd/kmod-profiler.service,$(DESTDIR)$(UNITDIR)/kmod-profiler.service,0644)
+	$(call install_substituted,systemd/kmod-profiler-rescan.service,$(DESTDIR)$(UNITDIR)/kmod-profiler-rescan.service,0644)
+	$(INSTALL) -m 0644 systemd/kmod-profiler.timer       $(DESTDIR)$(UNITDIR)/
+	$(INSTALL) -m 0644 systemd/kmod-profiler-rescan.path $(DESTDIR)$(UNITDIR)/
 
 install-hooks:
 	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/kernel/postinst.d
 	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/kernel/install.d
-	$(INSTALL) -m 0755 kernel-hooks/postinst.d/60-kmod-profiler \
-		$(DESTDIR)$(SYSCONFDIR)/kernel/postinst.d/60-kmod-profiler
-	$(INSTALL) -m 0755 kernel-hooks/install.d/40-kmod-profiler.install \
-		$(DESTDIR)$(SYSCONFDIR)/kernel/install.d/40-kmod-profiler.install
+	$(call install_substituted,kernel-hooks/postinst.d/60-kmod-profiler,$(DESTDIR)$(SYSCONFDIR)/kernel/postinst.d/60-kmod-profiler,0755)
+	$(call install_substituted,kernel-hooks/install.d/40-kmod-profiler.install,$(DESTDIR)$(SYSCONFDIR)/kernel/install.d/40-kmod-profiler.install,0755)
 
 install-docs:
 	$(INSTALL) -d $(DESTDIR)$(DOCDIR)
@@ -94,24 +113,25 @@ install-man:
 
 install-cron:
 	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/cron.d
-	$(INSTALL) -m 0644 cron/kmod-profiler.cron \
-		$(DESTDIR)$(SYSCONFDIR)/cron.d/kmod-profiler
+	$(call install_substituted,cron/kmod-profiler.cron,$(DESTDIR)$(SYSCONFDIR)/cron.d/kmod-profiler,0644)
 
 install-openrc:
-	$(INSTALL) -Dm755 openrc/kmod-profiler.initd \
-		$(DESTDIR)$(SYSCONFDIR)/init.d/kmod-profiler
-	$(INSTALL) -Dm644 openrc/kmod-profiler.confd \
-		$(DESTDIR)$(SYSCONFDIR)/conf.d/kmod-profiler
+	$(call install_substituted,openrc/kmod-profiler.initd,$(DESTDIR)$(SYSCONFDIR)/init.d/kmod-profiler,0755)
+	$(call install_substituted,openrc/kmod-profiler.confd,$(DESTDIR)$(SYSCONFDIR)/conf.d/kmod-profiler,0644)
 
 install-runit:
 	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/sv/kmod-profiler
 	$(INSTALL) -m 0755 runit/run \
 		$(DESTDIR)$(SYSCONFDIR)/sv/kmod-profiler/run
 
+install-alpine:
+	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/apk/triggers
+	$(call install_substituted,alpine/kmod-profiler.trigger,$(DESTDIR)$(SYSCONFDIR)/apk/triggers/kmod-profiler.trigger,0644)
+
 # Convenience aggregate: install everything except the systemd units, plus
 # both cron AND OpenRC fallbacks (use whichever your distro favors).
 install-no-systemd: install-bin install-hooks install-docs install-man \
-                    install-cron install-openrc
+                    install-cron install-openrc install-alpine
 
 uninstall:
 	rm -f $(DESTDIR)$(SBINDIR)/kmod-profiler

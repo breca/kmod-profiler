@@ -11,5 +11,5 @@
 
 PATH=/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin
 
-* * * * *    root /usr/sbin/kmod-profiler sample 2>/dev/null
-*/5 * * * *  root /usr/sbin/kmod-profiler rescan 2>/dev/null
+* * * * *    root @SBINDIR@/kmod-profiler sample 2>/dev/null
+*/5 * * * *  root @SBINDIR@/kmod-profiler rescan 2>/dev/null

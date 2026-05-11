@@ -10,8 +10,8 @@
 # discovers and processes everything on its own.
 set -e
 
-if [ -x /usr/sbin/kmod-profiler ]; then
-    /usr/sbin/kmod-profiler rescan 2>/dev/null || true
+if [ -x @SBINDIR@/kmod-profiler ]; then
+    @SBINDIR@/kmod-profiler rescan 2>/dev/null || true
 fi
 
 exit 0

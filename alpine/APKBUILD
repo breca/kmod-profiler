@@ -1,4 +1,4 @@
-# Maintainer: kmod-profiler maintainers <root@localhost>
+# Maintainer: Brett C. <32656963+breca@users.noreply.github.com>
 # shellcheck shell=bash
 # shellcheck disable=SC2034,SC2154  # Metadata vars read by abuild; srcdir/pkgdir provided by abuild
 pkgname=kmod-profiler

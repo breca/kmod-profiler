@@ -23,14 +23,15 @@ exec env \\
 EOF
     chmod +x "$fakebin/kmod-profiler-shim"
 
-    # Patch a copy of the hook to call the shim instead of the system binary
+    # Patch a copy of the hook to call the shim instead of the system binary.
+    # Hooks now use @SBINDIR@/kmod-profiler as a placeholder; replace it.
     HOOK_DEB="$SANDBOX/60-kmod-profiler"
-    sed 's|/usr/local/sbin/kmod-profiler|'"$fakebin"'/kmod-profiler-shim|' \
+    sed 's|@SBINDIR@/kmod-profiler|'"$fakebin"'/kmod-profiler-shim|' \
         "${BATS_TEST_DIRNAME}/../kernel-hooks/postinst.d/60-kmod-profiler" > "$HOOK_DEB"
     chmod +x "$HOOK_DEB"
 
     HOOK_SYSTEMD="$SANDBOX/40-kmod-profiler.install"
-    sed 's|/usr/local/sbin/kmod-profiler|'"$fakebin"'/kmod-profiler-shim|' \
+    sed 's|@SBINDIR@/kmod-profiler|'"$fakebin"'/kmod-profiler-shim|' \
         "${BATS_TEST_DIRNAME}/../kernel-hooks/install.d/40-kmod-profiler.install" > "$HOOK_SYSTEMD"
     chmod +x "$HOOK_SYSTEMD"
 }
