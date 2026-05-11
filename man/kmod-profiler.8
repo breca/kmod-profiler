@@ -1,6 +1,6 @@
 .\" SPDX-License-Identifier: GPL-3.0-or-later
 .\" Manpage for kmod-profiler.
-.TH KMOD\-PROFILER 8 "May 8, 2026" "kmod-profiler 1.0.0" "System Administration"
+.TH KMOD\-PROFILER 8 "May 11, 2026" "kmod-profiler 1.0.0" "System Administration"
 
 .SH NAME
 kmod\-profiler \- kernel module allowlist via runtime observation
@@ -23,6 +23,8 @@ kmod\-profiler \- kernel module allowlist via runtime observation
 .br
 .B kmod\-profiler diff
 .I kver1 kver2
+.br
+.B kmod\-profiler --version
 
 .SH DESCRIPTION
 .B kmod\-profiler
@@ -114,7 +116,7 @@ review the generated file before applying.
 Copy
 .I file
 (default:
-.IR generated\-blacklist.conf )
+.I /var/lib/kmod\-profiler/generated\-blacklist.conf )
 to
 .IR /etc/modprobe.d/zz\-kmod\-profiler.conf .
 Requires root. After applying, the initramfs must be rebuilt for the
@@ -164,6 +166,10 @@ that weren't in
 and which were removed. Useful for understanding what changed in a kernel
 upgrade, particularly when investigating why a previously-working module is
 suddenly being blacklisted.
+
+.TP
+.B --version
+Print the version and exit.
 
 .SH ENVIRONMENT
 .B kmod\-profiler
